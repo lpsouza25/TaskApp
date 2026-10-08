@@ -9,6 +9,24 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 const { width } = Dimensions.get('window');
 
+// Invisible native <input type="date"> overlaid on our own styled box, so we
+// control the visible font/size (iOS Safari ignores almost all CSS on a
+// date input's own rendered text) while still getting the native picker.
+const webHiddenDateInputStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  width: '100%',
+  height: '100%',
+  opacity: 0,
+  border: 'none',
+  padding: 0,
+  margin: 0,
+  cursor: 'pointer',
+};
+
 // --- DYNAMIC CALENDAR SCALE CALCULATION ---
 const AVAILABLE_WIDTH = width - 80;
 const CALENDAR_SCALE = Platform.OS === 'ios' ? AVAILABLE_WIDTH / 320 : 1;
@@ -524,12 +542,16 @@ const loadData = async () => {
                   <View style={[styles.formField, { flex: 1, minWidth: 0 }]}>
                     <Text style={styles.label}>DUE DATE</Text>
                     {Platform.OS === 'web' ? (
-                      <input
-                        type="date"
-                        style={{ ...styles.dateSelector, fontFamily: 'inherit', fontSize: 14, fontWeight: '600', color: '#1e293b', width: '100%', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}
-                        value={editDate}
-                        onChange={(e) => setEditDate(e.target.value)}
-                      />
+                      <View style={[styles.dateSelector, { position: 'relative' }]}>
+                        <Text style={styles.dateSelectorText}>{editDate}</Text>
+                        <Calendar size={16} color="#6366f1" />
+                        <input
+                          type="date"
+                          value={editDate}
+                          onChange={(e) => setEditDate(e.target.value)}
+                          style={webHiddenDateInputStyle}
+                        />
+                      </View>
                     ) : (
                       <TouchableOpacity onPress={() => openCalendar('edit')} style={styles.dateSelector}>
                         <Text style={styles.dateSelectorText}>{editDate}</Text>
@@ -822,12 +844,16 @@ const loadData = async () => {
                   <View style={[styles.formField, { flex: 1, minWidth: 0 }]}>
                     <Text style={styles.label}>DUE DATE</Text>
                     {Platform.OS === 'web' ? (
-                      <input
-                        type="date"
-                        style={{ ...styles.dateSelector, fontFamily: 'inherit', fontSize: 14, fontWeight: '600', color: '#1e293b', width: '100%', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}
-                        value={taskDate}
-                        onChange={(e) => setTaskDate(e.target.value)}
-                      />
+                      <View style={[styles.dateSelector, { position: 'relative' }]}>
+                        <Text style={styles.dateSelectorText}>{taskDate}</Text>
+                        <Calendar size={16} color="#6366f1" />
+                        <input
+                          type="date"
+                          value={taskDate}
+                          onChange={(e) => setTaskDate(e.target.value)}
+                          style={webHiddenDateInputStyle}
+                        />
+                      </View>
                     ) : (
                       <TouchableOpacity onPress={() => openCalendar('add')} style={styles.dateSelector}>
                         <Text style={styles.dateSelectorText}>{taskDate}</Text>
