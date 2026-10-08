@@ -63,7 +63,7 @@ export default function App() {
 
   // Form States
   const [taskName, setTaskName] = useState('');
-  const [editDate, seteditDate] = useState(formatDateToString(new Date()));
+  const [editDate, setEditDate] = useState(formatDateToString(new Date()));
   const [taskCoins, setTaskCoins] = useState('10');
   
   // Bank Form States
@@ -261,7 +261,7 @@ const loadData = async () => {
     setShowPicker(false);
     if (selectedDate) {
       const dateString = formatDateToString(selectedDate);
-      if (pickerTarget === 'add') seteditDate(dateString);
+      if (pickerTarget === 'add') setEditDate(dateString);
       else setEditDate(dateString);
     }
   };
@@ -472,7 +472,7 @@ const loadData = async () => {
                       type="date"
                       value={editDate}
                       onChangeText={(text) => {
-                        seteditDate(text);
+                        setEditDate(text);
                         setShowPicker(false);
                       }}
                     />
