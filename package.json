@@ -16,7 +16,7 @@
     "lucide-react-native": "*",
     "react-native-reanimated": "~3.16.1",
     "react-native-gesture-handler": "~2.20.2",
-    "@react-native-community/datetimepicker": "8.2.0"
+    "@react-native-community/datetimepicker": "8.2.0",
     "babel-preset-expo": "~52.0.0"
   }
 }
