@@ -467,12 +467,12 @@ const loadData = async () => {
 
                 {showPicker && pickerTarget === 'edit' && (
                   Platform.OS === 'web' ? (
-                    <TextInput
-                      style={[styles.input, { marginTop: 10 }]}
+                    <input
                       type="date"
+                      style={{ ...styles.input, marginTop: 10, fontFamily: 'inherit' }}
                       value={editDate}
-                      onChangeText={(text) => {
-                        setEditDate(text);
+                      onChange={(e) => {
+                        setEditDate(e.target.value);
                         setShowPicker(false);
                       }}
                     />
@@ -774,12 +774,12 @@ const loadData = async () => {
 
                 {showPicker && pickerTarget === 'add' && (
                   Platform.OS === 'web' ? (
-                    <TextInput
-                      style={[styles.input, { marginTop: 10 }]}
+                    <input
                       type="date"
+                      style={{ ...styles.input, marginTop: 10, fontFamily: 'inherit' }}
                       value={taskDate}
-                      onChangeText={(text) => {
-                        setTaskDate(text);
+                      onChange={(e) => {
+                        setTaskDate(e.target.value);
                         setShowPicker(false);
                       }}
                     />
