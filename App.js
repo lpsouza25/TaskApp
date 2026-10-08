@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, 
-  SafeAreaView, Dimensions, Animated, KeyboardAvoidingView, Platform, Modal, Pressable
+import {
+  StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView,
+  SafeAreaView, Dimensions, Animated, PanResponder, KeyboardAvoidingView, Platform, Modal, Pressable
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import { Check, Trash2, Plus, Eye, EyeOff, X, Save, Calendar } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -41,6 +40,77 @@ const GoldCoin = ({ size }) => {
       <View style={[styles.goldCoinInner, { width: innerSize, height: innerSize, borderRadius: innerSize / 2 }]}>
         <Text style={[styles.dollarSign, { fontSize: fontSize }]}>$</Text>
       </View>
+    </View>
+  );
+};
+
+// --- SWIPE-LEFT-TO-DELETE ROW (uses PanResponder so it works with touch AND mouse on web) ---
+const SWIPE_DELETE_WIDTH = 80;
+
+const SwipeToDelete = ({ children, onDelete, onPress, disabled, style, radius = 0 }) => {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const offset = useRef(0);
+
+  const closeSwipe = () => {
+    offset.current = 0;
+    Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+  };
+
+  // Tap-to-press and swipe-to-delete are handled by this single responder
+  // (rather than a separate nested Touchable) because once a nested
+  // Touchable claims the gesture on press-in, this view's responder can
+  // never take it over for a drag, and a real DOM click fires on release
+  // regardless of how far the pointer moved in between.
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !disabled,
+      onMoveShouldSetPanResponder: () => !disabled,
+      onPanResponderMove: (_, gesture) => {
+        const next = Math.max(-SWIPE_DELETE_WIDTH, Math.min(0, offset.current + gesture.dx));
+        translateX.setValue(next);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const dragDistance = Math.abs(gesture.dx);
+        if (dragDistance < 5) {
+          if (offset.current !== 0) {
+            closeSwipe();
+          } else if (onPress) {
+            onPress();
+          }
+          return;
+        }
+        const next = offset.current + gesture.dx;
+        const open = next < -SWIPE_DELETE_WIDTH / 2;
+        offset.current = open ? -SWIPE_DELETE_WIDTH : 0;
+        Animated.spring(translateX, { toValue: offset.current, useNativeDriver: true }).start();
+      },
+      onPanResponderTerminate: closeSwipe,
+    })
+  ).current;
+
+  return (
+    <View style={[{ position: 'relative', overflow: 'hidden', borderRadius: radius }, style]}>
+      {!disabled && (
+        <View style={[StyleSheet.absoluteFill, { flexDirection: 'row', justifyContent: 'flex-end' }]}>
+          <TouchableOpacity
+            onPress={() => { closeSwipe(); onDelete(); }}
+            style={{
+              backgroundColor: '#ff4757',
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: SWIPE_DELETE_WIDTH,
+              height: '100%',
+              borderTopRightRadius: radius,
+              borderBottomRightRadius: radius,
+            }}
+          >
+            <Trash2 color="white" size={24} />
+          </TouchableOpacity>
+        </View>
+      )}
+      <Animated.View {...panResponder.panHandlers} style={{ transform: [{ translateX }] }}>
+        {children}
+      </Animated.View>
     </View>
   );
 };
@@ -246,6 +316,12 @@ const loadData = async () => {
     saveData(newTasks, withdrawals);
   };
 
+  const deleteWithdrawal = (id) => {
+    const newWithdrawals = withdrawals.filter(w => w.id !== id);
+    setWithdrawals(newWithdrawals);
+    saveData(tasks, newWithdrawals);
+  };
+
   const saveEdit = () => {
     const coinVal = parseInt(editCoins);
     if (isNaN(coinVal) || coinVal > 99) return;
@@ -426,7 +502,7 @@ const loadData = async () => {
   const isEditCoinsInvalid = parseInt(editCoins) > 99;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
 
           {/* EDIT MODAL OVERLAY */}
@@ -448,48 +524,45 @@ const loadData = async () => {
                 <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end' }}>
                   <View style={[styles.formField, { flex: 1 }]}>
                     <Text style={styles.label}>DUE DATE</Text>
-                    <TouchableOpacity onPress={() => openCalendar('edit')} style={styles.dateSelector}>
-                      <Text style={styles.dateSelectorText}>{editDate}</Text>
-                      <Calendar size={16} color="#6366f1" />
-                    </TouchableOpacity>
+                    {Platform.OS === 'web' ? (
+                      <input
+                        type="date"
+                        style={{ ...styles.dateSelector, fontFamily: 'inherit', fontSize: 14, fontWeight: '600', color: '#1e293b', width: '100%', boxSizing: 'border-box' }}
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                      />
+                    ) : (
+                      <TouchableOpacity onPress={() => openCalendar('edit')} style={styles.dateSelector}>
+                        <Text style={styles.dateSelectorText}>{editDate}</Text>
+                        <Calendar size={16} color="#6366f1" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                   <View style={[styles.formField, { width: 80 }]}>
                     <Text style={styles.label}>COINS</Text>
-                    <TextInput 
-                      style={[styles.input, isEditCoinsInvalid && styles.inputError]} 
-                      value={editCoins} 
-                      onChangeText={setEditCoins} 
-                      keyboardType="numeric" 
-                      onFocus={() => setShowPicker(false)} 
+                    <TextInput
+                      style={[styles.input, isEditCoinsInvalid && styles.inputError]}
+                      value={editCoins}
+                      onChangeText={setEditCoins}
+                      keyboardType="numeric"
+                      onFocus={() => setShowPicker(false)}
                     />
                   </View>
                 </View>
 
-                {showPicker && pickerTarget === 'edit' && (
-                  Platform.OS === 'web' ? (
-                    <input
-                      type="date"
-                      style={{ ...styles.input, marginTop: 10, fontFamily: 'inherit' }}
-                      value={editDate}
-                      onChange={(e) => {
-                        setEditDate(e.target.value);
-                        setShowPicker(false);
-                      }}
+                {Platform.OS !== 'web' && showPicker && pickerTarget === 'edit' && (
+                  <View style={[styles.calendarWrapper, { transform: [{ scale: CALENDAR_SCALE }] }]} onTouchStart={(e) => e.stopPropagation()}>
+                    <DateTimePicker
+                      value={parseDateString(editDate)}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                      onChange={onDateChange}
                     />
-                  ) : (
-                    <View style={[styles.calendarWrapper, { transform: [{ scale: CALENDAR_SCALE }] }]} onTouchStart={(e) => e.stopPropagation()}>
-                      <DateTimePicker
-                        value={parseDateString(editDate)}
-                        mode="date"
-                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                        onChange={onDateChange}
-                      />
-                    </View>
-                  )
+                  </View>
                 )}
 
-                <TouchableOpacity 
-                  style={[styles.saveBtn, isEditCoinsInvalid && styles.btnDisabled]} 
+                <TouchableOpacity
+                  style={[styles.saveBtn, isEditCoinsInvalid && styles.btnDisabled]}
                   onPress={saveEdit}
                   disabled={isEditCoinsInvalid}
                 >
@@ -576,43 +649,42 @@ const loadData = async () => {
                       {sortedTasks.map(t => {
                         const isOverdue = checkIsOverdue(t);
                         return (
-                          <Swipeable key={t.id} renderRightActions={() => {
-                            if (t.isDone) return null;
-                            return (
-                              <TouchableOpacity onPress={() => deleteTask(t.id)} style={styles.deleteAction}>
-                                <Trash2 color="white" size={24} />
-                              </TouchableOpacity>
-                            );
-                          }}>
-                            <TouchableOpacity activeOpacity={t.isDone ? 1 : 0.7} onPress={() => { if(!t.isDone) { setEditingTask(t); setEditName(t.name); setEditCoins(t.coins.toString()); setEditDate(t.date); } }}>
-                              <View style={[
-                                styles.taskItem, 
-                                t.isDone && !t.isSpend && styles.doneItem, 
-                                isOverdue && styles.overdueItem,
-                                t.isSpend && { backgroundColor: '#fef2f2', borderColor: '#fecaca', opacity: 0.9 }
+                          <SwipeToDelete
+                            key={t.id}
+                            disabled={t.isDone}
+                            onDelete={() => deleteTask(t.id)}
+                            onPress={() => { setEditingTask(t); setEditName(t.name); setEditCoins(t.coins.toString()); setEditDate(t.date); }}
+                            radius={22}
+                            style={{ marginBottom: 12 }}
+                          >
+                            <View style={[
+                              styles.taskItem,
+                              { marginBottom: 0 },
+                              t.isDone && !t.isSpend && styles.doneItem,
+                              isOverdue && styles.overdueItem,
+                              t.isSpend && { backgroundColor: '#fef2f2', borderColor: '#fecaca', opacity: 0.9 }
+                            ]}>
+                              <TouchableOpacity onPress={() => toggleTask(t.id)} style={[
+                                styles.check,
+                                t.isDone && styles.checked,
+                                t.isSpend && { backgroundColor: '#ef4444', borderColor: '#ef4444' }
                               ]}>
-                                <TouchableOpacity onPress={() => toggleTask(t.id)} style={[
-                                  styles.check, 
-                                  t.isDone && styles.checked,
-                                  t.isSpend && { backgroundColor: '#ef4444', borderColor: '#ef4444' }
-                                ]}>
-                                  {t.isSpend ? (
-                                    <Text style={{ color: 'white', fontWeight: '900', fontSize: 16 }}>-</Text>
-                                  ) : (
-                                    t.isDone && <Check color="white" size={16} strokeWidth={4} />
-                                  )}
-                                </TouchableOpacity>
-                                <View style={{ flex: 1, marginRight: 15 }}>
-                                  <Text style={[styles.taskName, t.isDone && !t.isSpend && styles.doneText]}>{t.name}</Text>
-                                  {isOverdue && <Text style={styles.overdueText}>Was due: {t.date}</Text>}
-                                </View>
-                                <View style={styles.alignedCoinSlot}>
-                                  <GoldCoin size={29} />
-                                  <Text style={[styles.coinValueLabel, t.isSpend && { color: '#ef4444' }]}>{getTaskDisplayCoins(t)}</Text>
-                                </View>
+                                {t.isSpend ? (
+                                  <Text style={{ color: 'white', fontWeight: '900', fontSize: 16 }}>-</Text>
+                                ) : (
+                                  t.isDone && <Check color="white" size={16} strokeWidth={4} />
+                                )}
+                              </TouchableOpacity>
+                              <View style={{ flex: 1, marginRight: 15 }}>
+                                <Text style={[styles.taskName, t.isDone && !t.isSpend && styles.doneText]}>{t.name}</Text>
+                                {isOverdue && <Text style={styles.overdueText}>Was due: {t.date}</Text>}
                               </View>
-                            </TouchableOpacity>
-                          </Swipeable>
+                              <View style={styles.alignedCoinSlot}>
+                                <GoldCoin size={29} />
+                                <Text style={[styles.coinValueLabel, t.isSpend && { color: '#ef4444' }]}>{getTaskDisplayCoins(t)}</Text>
+                              </View>
+                            </View>
+                          </SwipeToDelete>
                         );
                       })}
                     </View>
@@ -624,11 +696,11 @@ const loadData = async () => {
                     <View style={styles.sharedBoxStyle}>
                       <View style={styles.formField}>
                         <Text style={styles.label}>REWARD NAME</Text>
-                        <TextInput style={styles.input} value={wDesc} onChangeText={setWDesc} placeholder="Pizza, Games..." onFocus={() => setShowPicker(false)} />
+                        <TextInput style={styles.input} value={wDesc} onChangeText={setWDesc} placeholder="Pizza, Games..." placeholderTextColor="#94a3b8" onFocus={() => setShowPicker(false)} />
                       </View>
                       <View style={styles.formField}>
                         <Text style={styles.label}>COST</Text>
-                        <TextInput style={styles.input} value={wAmount} onChangeText={setWAmount} keyboardType="numeric" placeholder="50" onFocus={() => setShowPicker(false)} />
+                        <TextInput style={styles.input} value={wAmount} onChangeText={setWAmount} keyboardType="numeric" placeholder="50" placeholderTextColor="#94a3b8" onFocus={() => setShowPicker(false)} />
                       </View>
                       <TouchableOpacity disabled={!wDesc || !wAmount || parseInt(wAmount) > totalCoins} onPress={handleWithdraw} style={[styles.withdrawBtn, (!wDesc || !wAmount || parseInt(wAmount) > totalCoins) && { opacity: 0.5 }]}>
                         <Text style={styles.withdrawBtnText}>Spend Coins</Text>
@@ -648,13 +720,15 @@ const loadData = async () => {
                     <View key={dateKey}>
                       <Text style={styles.sectionTitle}>{getSectionLabel(dateKey)}</Text>
                       {groupedWith[dateKey].map(w => (
-                        <View key={w.id} style={styles.historyItem}>
-                          <Text style={styles.historyDesc}>{w.desc}</Text>
-                          <View style={styles.coinValueContainer}>
-                            <Text style={styles.historyAmount}>-{w.amount}</Text>
-                            <GoldCoin size={25} />
+                        <SwipeToDelete key={w.id} onDelete={() => deleteWithdrawal(w.id)} radius={18} style={{ marginBottom: 10 }}>
+                          <View style={[styles.historyItem, { marginBottom: 0 }]}>
+                            <Text style={styles.historyDesc}>{w.desc}</Text>
+                            <View style={styles.coinValueContainer}>
+                              <Text style={styles.historyAmount}>-{w.amount}</Text>
+                              <GoldCoin size={25} />
+                            </View>
                           </View>
-                        </View>
+                        </SwipeToDelete>
                       ))}
                     </View>
                   ));
@@ -735,11 +809,12 @@ const loadData = async () => {
               <View style={[styles.sharedBoxStyle, styles.floatingFormExtra]}>
                 <View style={styles.formField}>
                   <Text style={styles.label}>TASK NAME</Text>
-                  <TextInput 
-                    style={styles.input} 
-                    placeholder="What needs doing?" 
-                    value={taskName} 
-                    onChangeText={setTaskName} 
+                  <TextInput
+                    style={styles.input}
+                    placeholder="What needs doing?"
+                    placeholderTextColor="#94a3b8"
+                    value={taskName}
+                    onChangeText={setTaskName}
                     onFocus={() => setShowPicker(false)} 
                   />
                 </View>
@@ -747,58 +822,55 @@ const loadData = async () => {
                 <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end' }}>
                   <View style={[styles.formField, { flex: 1 }]}>
                     <Text style={styles.label}>DUE DATE</Text>
-                    <TouchableOpacity onPress={() => openCalendar('add')} style={styles.dateSelector}>
-                      <Text style={styles.dateSelectorText}>{taskDate}</Text>
-                      <Calendar size={16} color="#6366f1" />
-                    </TouchableOpacity>
+                    {Platform.OS === 'web' ? (
+                      <input
+                        type="date"
+                        style={{ ...styles.dateSelector, fontFamily: 'inherit', fontSize: 14, fontWeight: '600', color: '#1e293b', width: '100%', boxSizing: 'border-box' }}
+                        value={taskDate}
+                        onChange={(e) => setTaskDate(e.target.value)}
+                      />
+                    ) : (
+                      <TouchableOpacity onPress={() => openCalendar('add')} style={styles.dateSelector}>
+                        <Text style={styles.dateSelectorText}>{taskDate}</Text>
+                        <Calendar size={16} color="#6366f1" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                   <View style={[styles.formField, { width: 80 }]}>
                     <Text style={styles.label}>COINS</Text>
-                    <TextInput 
-                      style={[styles.input, isTaskCoinsInvalid && styles.inputError]} 
-                      value={taskCoins} 
-                      onChangeText={setTaskCoins} 
-                      keyboardType="numeric" 
-                      onFocus={() => setShowPicker(false)} 
+                    <TextInput
+                      style={[styles.input, isTaskCoinsInvalid && styles.inputError]}
+                      value={taskCoins}
+                      onChangeText={setTaskCoins}
+                      keyboardType="numeric"
+                      onFocus={() => setShowPicker(false)}
                     />
                   </View>
-                  
-                  <TouchableOpacity 
-                    onPress={addTask} 
-                    style={[styles.addBtn, isTaskCoinsInvalid && styles.btnDisabled]} 
+
+                  <TouchableOpacity
+                    onPress={addTask}
+                    style={[styles.addBtn, isTaskCoinsInvalid && styles.btnDisabled]}
                     disabled={isTaskCoinsInvalid}
                   >
                     <Plus color="white" />
                   </TouchableOpacity>
                 </View>
 
-                {showPicker && pickerTarget === 'add' && (
-                  Platform.OS === 'web' ? (
-                    <input
-                      type="date"
-                      style={{ ...styles.input, marginTop: 10, fontFamily: 'inherit' }}
-                      value={taskDate}
-                      onChange={(e) => {
-                        setTaskDate(e.target.value);
-                        setShowPicker(false);
-                      }}
+                {Platform.OS !== 'web' && showPicker && pickerTarget === 'add' && (
+                  <View style={[styles.calendarWrapper, { transform: [{ scale: CALENDAR_SCALE }] }]} onTouchStart={(e) => e.stopPropagation()}>
+                    <DateTimePicker
+                      value={parseDateString(taskDate)}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                      onChange={onDateChange}
                     />
-                  ) : (
-                    <View style={[styles.calendarWrapper, { transform: [{ scale: CALENDAR_SCALE }] }]} onTouchStart={(e) => e.stopPropagation()}>
-                      <DateTimePicker
-                        value={parseDateString(taskDate)}
-                        mode="date"
-                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                        onChange={onDateChange}
-                      />
-                    </View>
-                  )
+                  </View>
                 )}
               </View>
             </KeyboardAvoidingView>
           )}
         </SafeAreaView>
-      </GestureHandlerRootView>
+      </View>
     );
 }
 
@@ -842,7 +914,6 @@ const styles = StyleSheet.create({
   doneText: { textDecorationLine: 'line-through', color: '#94a3b8' },
   overdueText: { fontSize: 11, color: '#ef4444', fontWeight: '800' },
   dateText: { fontSize: 11, color: '#6366f1', fontWeight: '800' },
-  deleteAction: { backgroundColor: '#ff4757', justifyContent: 'center', alignItems: 'center', width: 80, height: '90%', borderRadius: 22, marginBottom: 12 },
   formContainer: { position: 'absolute', bottom: 0, width: '100%' },
   sharedBoxStyle: { backgroundColor: 'white', padding: 20, borderRadius: 25, borderWidth: 2, borderColor: '#e2e8f0', gap: 12 },
   floatingFormExtra: { marginHorizontal: 20, marginBottom: 25, shadowColor: '#000', shadowRadius: 15, shadowOpacity: 0.1 },
