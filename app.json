@@ -1,23 +1,37 @@
 {
-  "name": "task-app",
-  "version": "1.0.0",
-  "scripts": {
-    "build": "npx expo export -p web"
-  },
-  "dependencies": {
-    "expo": "~52.0.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-native": "0.76.7",
-    "react-native-web": "~0.19.13",
-    "react-native-svg": "15.12.1",
-    "@expo/vector-icons": "^15.0.3",
-    "react-native-paper": "4.9.2",
-    "lucide-react-native": "*",
-    "react-native-reanimated": "~3.16.1",
-    "react-native-gesture-handler": "~2.20.2",
-    "@react-native-async-storage/async-storage": "1.23.1",
-    "@react-native-community/datetimepicker": "8.2.0",
-    "babel-preset-expo": "~52.0.0"
+  "expo": {
+    "name": "taskapp",
+    "slug": "snack-68c62a8f-c8d2-4a87-a0e5-5bf183e62629",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "name": "TaskApp",
+      "description": "A simple task manager PWA",
+      "themeColor": "#4f46e5",
+      "backgroundColor": "#ffffff"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }

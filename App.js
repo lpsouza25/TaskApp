@@ -63,7 +63,7 @@ export default function App() {
 
   // Form States
   const [taskName, setTaskName] = useState('');
-  const [editDate, setEditDate] = useState(formatDateToString(new Date()));
+  const [taskDate, setTaskDate] = useState(formatDateToString(new Date()));
   const [taskCoins, setTaskCoins] = useState('10');
   
   // Bank Form States
@@ -202,7 +202,7 @@ const loadData = async () => {
     const newTasks = [...tasks, {
       id: Date.now().toString(),
       name: taskName,
-      date: editDate,
+      date: taskDate,
       coins: coinVal,
       isDone: false
     }];
@@ -261,7 +261,7 @@ const loadData = async () => {
     setShowPicker(false);
     if (selectedDate) {
       const dateString = formatDateToString(selectedDate);
-      if (pickerTarget === 'add') setEditDate(dateString);
+      if (pickerTarget === 'add') setTaskDate(dateString);
       else setEditDate(dateString);
     }
   };
@@ -465,7 +465,7 @@ const loadData = async () => {
                   </View>
                 </View>
 
-                {showPicker && pickerTarget === 'add' && (
+                {showPicker && pickerTarget === 'edit' && (
                   Platform.OS === 'web' ? (
                     <TextInput
                       style={[styles.input, { marginTop: 10 }]}
@@ -748,7 +748,7 @@ const loadData = async () => {
                   <View style={[styles.formField, { flex: 1 }]}>
                     <Text style={styles.label}>DUE DATE</Text>
                     <TouchableOpacity onPress={() => openCalendar('add')} style={styles.dateSelector}>
-                      <Text style={styles.dateSelectorText}>{editDate}</Text>
+                      <Text style={styles.dateSelectorText}>{taskDate}</Text>
                       <Calendar size={16} color="#6366f1" />
                     </TouchableOpacity>
                   </View>
@@ -773,14 +773,26 @@ const loadData = async () => {
                 </View>
 
                 {showPicker && pickerTarget === 'add' && (
-                  <View style={[styles.calendarWrapper, { transform: [{ scale: CALENDAR_SCALE }] }]} onTouchStart={(e) => e.stopPropagation()}>
-                    <DateTimePicker
-                      value={parseDateString(editDate)}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                      onChange={onDateChange}
+                  Platform.OS === 'web' ? (
+                    <TextInput
+                      style={[styles.input, { marginTop: 10 }]}
+                      type="date"
+                      value={taskDate}
+                      onChangeText={(text) => {
+                        setTaskDate(text);
+                        setShowPicker(false);
+                      }}
                     />
-                  </View>
+                  ) : (
+                    <View style={[styles.calendarWrapper, { transform: [{ scale: CALENDAR_SCALE }] }]} onTouchStart={(e) => e.stopPropagation()}>
+                      <DateTimePicker
+                        value={parseDateString(taskDate)}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                        onChange={onDateChange}
+                      />
+                    </View>
+                  )
                 )}
               </View>
             </KeyboardAvoidingView>
