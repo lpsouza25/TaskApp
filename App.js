@@ -100,8 +100,7 @@ const SwipeToDelete = ({ children, onDelete, onPress, disabled, style, radius = 
               alignItems: 'center',
               width: SWIPE_DELETE_WIDTH,
               height: '100%',
-              borderTopRightRadius: radius,
-              borderBottomRightRadius: radius,
+              borderRadius: radius,
             }}
           >
             <Trash2 color="white" size={24} />
@@ -522,12 +521,12 @@ const loadData = async () => {
                 </View>
 
                 <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end' }}>
-                  <View style={[styles.formField, { flex: 1 }]}>
+                  <View style={[styles.formField, { flex: 1, minWidth: 0 }]}>
                     <Text style={styles.label}>DUE DATE</Text>
                     {Platform.OS === 'web' ? (
                       <input
                         type="date"
-                        style={{ ...styles.dateSelector, fontFamily: 'inherit', fontSize: 14, fontWeight: '600', color: '#1e293b', width: '100%', boxSizing: 'border-box' }}
+                        style={{ ...styles.dateSelector, fontFamily: 'inherit', fontSize: 14, fontWeight: '600', color: '#1e293b', width: '100%', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
                       />
@@ -820,12 +819,12 @@ const loadData = async () => {
                 </View>
                 
                 <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end' }}>
-                  <View style={[styles.formField, { flex: 1 }]}>
+                  <View style={[styles.formField, { flex: 1, minWidth: 0 }]}>
                     <Text style={styles.label}>DUE DATE</Text>
                     {Platform.OS === 'web' ? (
                       <input
                         type="date"
-                        style={{ ...styles.dateSelector, fontFamily: 'inherit', fontSize: 14, fontWeight: '600', color: '#1e293b', width: '100%', boxSizing: 'border-box' }}
+                        style={{ ...styles.dateSelector, fontFamily: 'inherit', fontSize: 14, fontWeight: '600', color: '#1e293b', width: '100%', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}
                         value={taskDate}
                         onChange={(e) => setTaskDate(e.target.value)}
                       />
@@ -921,9 +920,9 @@ const styles = StyleSheet.create({
   modalWidth: { width: width - 40 }, 
   formField: { gap: 6 }, 
   label: { fontSize: 9, fontWeight: '900', color: '#94a3b8', paddingLeft: 4 },
-  input: { backgroundColor: '#f8fafc', padding: 12, borderRadius: 14, borderWidth: 2, borderColor: '#f1f5f9', fontSize: 14 },
+  input: { backgroundColor: '#f8fafc', paddingHorizontal: 12, height: 48, borderRadius: 14, borderWidth: 2, borderColor: '#f1f5f9', fontSize: 14, boxSizing: 'border-box' },
   inputError: { borderColor: '#ef4444', backgroundColor: '#fef2f2' },
-  dateSelector: { backgroundColor: '#f8fafc', padding: 12, borderRadius: 14, borderWidth: 2, borderColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dateSelector: { backgroundColor: '#f8fafc', paddingHorizontal: 12, height: 48, borderRadius: 14, borderWidth: 2, borderColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' },
   dateSelectorText: { fontSize: 14, color: '#1e293b', fontWeight: '600' },
   addBtn: { backgroundColor: '#6366f1', paddingHorizontal: 15, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   calendarWrapper: { width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0 },
