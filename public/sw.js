@@ -22,6 +22,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  // Never cache (or intercept) cross-origin requests, especially the
+  // Google Sheets data endpoint. A stale cached copy served as if it were
+  // fresh would make the app silently load out-of-date tasks/withdrawals,
+  // and the next save would overwrite real, newer data with that stale
+  // snapshot. Only this app's own same-origin shell/assets are cached.
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {

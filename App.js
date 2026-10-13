@@ -137,7 +137,9 @@ export default function App() {
   const [tasks, setTasks] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
   const [totalCoins, setTotalCoins] = useState(0);
-  const [hideFinished, setHideFinished] = useState(false);
+  const [hideFinished, setHideFinished] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   
   // Lazy Loading Pagination States
   const [pastLimit, setPastLimit] = useState(0); 
@@ -229,12 +231,16 @@ export default function App() {
     triggerCoinAnimation();
   };
 
-const loadData = async () => {
+const LOCAL_BACKUP_KEY = 'taskapp_last_known_good';
+const LOAD_RETRY_ATTEMPTS = 3;
+const LOAD_RETRY_DELAY_MS = 1500;
+
+const loadData = async (attempt = 1) => {
     try {
-      console.log("Fetching from Google Sheets...");
+      console.log(`Fetching from Google Sheets... (attempt ${attempt})`);
       const response = await fetch(SCRIPT_URL);
       const cloudData = await response.json();
-      
+
       // Look for the specific objects from the generic JSON blob saved in cell A1
       if (cloudData && cloudData.tasks) {
         setTasks(cloudData.tasks);
@@ -244,12 +250,47 @@ const loadData = async () => {
       } else {
         console.log("Sheet is empty or unformatted. Starting fresh.");
       }
-    } catch (e) { 
-      console.error("Cloud fetch failed:", e); 
+      // Only now is it safe to let saveData write to the sheet, and only now
+      // do we have a trustworthy snapshot worth keeping as a local fallback.
+      await AsyncStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify(cloudData || {})).catch(() => {});
+      setDataLoaded(true);
+      setLoadError(false);
+    } catch (e) {
+      console.error("Cloud fetch failed:", e);
+      if (attempt < LOAD_RETRY_ATTEMPTS) {
+        setTimeout(() => loadData(attempt + 1), LOAD_RETRY_DELAY_MS);
+        return;
+      }
+      // Out of retries. Do NOT leave state empty and do NOT allow saves yet —
+      // that combination is what silently wiped the sheet before (a failed
+      // load left tasks/withdrawals at [], and the next add/check-off saved
+      // that near-empty state right back over the real data). Fall back to
+      // the last successful snapshot instead, and only unlock saving once we
+      // have *some* trustworthy baseline, from the network or from disk.
+      try {
+        const backup = await AsyncStorage.getItem(LOCAL_BACKUP_KEY);
+        if (backup) {
+          const parsed = JSON.parse(backup);
+          if (parsed.tasks) setTasks(parsed.tasks);
+          if (parsed.withdrawals) setWithdrawals(parsed.withdrawals);
+          if (parsed.hidePref !== undefined) setHideFinished(parsed.hidePref);
+          setDataLoaded(true);
+          console.log("Restored last known-good data from local backup.");
+        }
+      } catch (_) {}
+      setLoadError(true);
     }
   };
 
   const saveData = async (newTasks, newWith, newHidePref) => {
+    if (!dataLoaded) {
+      // We never confirmed what's actually on the sheet (or a safe local
+      // fallback) — refuse to write, so we can't ever overwrite real data
+      // with an incomplete in-memory state. The edit still applies locally;
+      // it just won't sync until a load succeeds.
+      console.warn("Skipping save: data has not finished loading yet.");
+      return;
+    }
     setIsSyncing(true);
     try {
       const payload = {
@@ -263,9 +304,10 @@ const loadData = async () => {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
+      await AsyncStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify(payload)).catch(() => {});
       console.log("Cloud sync complete.");
-    } catch (e) { 
-      console.error("Cloud sync failed:", e); 
+    } catch (e) {
+      console.error("Cloud sync failed:", e);
     } finally {
       setIsSyncing(false);
     }
@@ -610,6 +652,14 @@ const loadData = async () => {
             </View>
           </View>
 
+          {loadError && (
+            <View style={styles.syncWarningBanner}>
+              <Text style={styles.syncWarningText}>
+                Couldn't connect to your data — changes won't be saved until this reconnects. Try reopening the app.
+              </Text>
+            </View>
+          )}
+
           {/* TAB CONTROLLERS */}
           <View style={styles.tabBar}>
             <TouchableOpacity onPress={() => setTab('tasks')} style={[styles.tab, tab === 'tasks' && styles.activeTab]}>
@@ -902,6 +952,8 @@ const loadData = async () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fdfbf7' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
+  syncWarningBanner: { backgroundColor: '#fef3c7', borderColor: '#fcd34d', borderWidth: 1, borderRadius: 12, marginHorizontal: 20, marginBottom: 15, padding: 10 },
+  syncWarningText: { color: '#92400e', fontSize: 12, fontWeight: '700' },
   title: { fontSize: 32, fontWeight: '900', color: '#1e293b' },
   headerBalance: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerBalanceText: { fontSize: 18, fontWeight: '900', color: '#f59e0b' },
