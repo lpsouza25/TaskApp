@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView,
-  SafeAreaView, Dimensions, Animated, PanResponder, KeyboardAvoidingView, Platform, Modal, Pressable
+  SafeAreaView, Dimensions, Animated, PanResponder, KeyboardAvoidingView, Platform, Modal, Pressable,
+  ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Check, Trash2, Plus, Eye, EyeOff, X, Save, Calendar } from 'lucide-react-native';
@@ -945,6 +946,12 @@ const loadData = async (attempt = 1) => {
             </KeyboardAvoidingView>
           )}
         </SafeAreaView>
+
+        {!dataLoaded && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#6366f1" />
+          </View>
+        )}
       </View>
     );
 }
@@ -953,6 +960,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fdfbf7' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
   syncWarningBanner: { backgroundColor: '#fef3c7', borderColor: '#fcd34d', borderWidth: 1, borderRadius: 12, marginHorizontal: 20, marginBottom: 15, padding: 10 },
+  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(100, 116, 139, 0.35)', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
   syncWarningText: { color: '#92400e', fontSize: 12, fontWeight: '700' },
   title: { fontSize: 32, fontWeight: '900', color: '#1e293b' },
   headerBalance: { flexDirection: 'row', alignItems: 'center', gap: 8 },
