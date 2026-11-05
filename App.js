@@ -171,6 +171,7 @@ export default function App() {
     { id: 'c5', name: 'Putting away laundry', coins: 15 },
     { id: 'c6', name: 'Focused meeting', coins: 8 },
     { id: 'c7', name: 'Stretching', coins: 5 },
+    { id: 'c8', name: 'Attend class', coins: 10 },
   ]);
 
   // Quick Withdraws List
